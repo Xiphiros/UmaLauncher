@@ -178,11 +178,18 @@ class DefaultSettings(se.NewSettings):
             se.SettingType.RADIOBUTTONS,
             tab="Event Helper"
         ),
-        "akikawa_bond_enabled": se.Setting(
-            "Count Akikawa's bond as useful",
-            "Include Akikawa Yayoi's bond gauge in the 'Useful Bond' calculation.",
-            True,
-            se.SettingType.BOOL,
+        "useful_bond_blacklist": se.Setting(
+            "Useful Bond Blacklist",
+            "List of character IDs to exclude from 'Useful Bond' calculations.",
+            [],
+            se.SettingType.LIST,
+            hidden=True
+        ),
+        "manage_useful_bond_blacklist": se.Setting(
+            "Manage Useful Bond Blacklist",
+            "Select characters to permanently exclude from the 'Useful Bond' calculation and portrait display.",
+            "manage_blacklist",
+            se.SettingType.COMMANDBUTTON,
             tab="Event Helper"
         ),
         "custom_browser_divider": se.Setting(

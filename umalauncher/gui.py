@@ -1074,7 +1074,8 @@ class UmaPreferences(UmaMainWidget):
         # unique_tabs.append(unique_tabs.pop(unique_tabs.index("English Patch")))
 
         self.command_dict = {
-            "open_training_logs": lambda: util.open_folder(util.TRAINING_LOGS_FOLDER)
+            "open_training_logs": lambda: util.open_folder(util.TRAINING_LOGS_FOLDER),
+            "manage_blacklist": self.manage_blacklist
         }
 
         self.settings_widgets = []
@@ -1149,6 +1150,10 @@ class UmaPreferences(UmaMainWidget):
 
         self.has_saved = True
         self.close()
+
+    def manage_blacklist(self):
+
+        util.show_info_box("Not Implemented, just a placeholder", "This feature will be implemented in a future step.")
 
 
 class UmaSimpleDialog(UmaMainDialog):
