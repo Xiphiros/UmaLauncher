@@ -7,11 +7,12 @@ from helper_table_defaults import RowTypes
 
 
 class TrainingPartner():
-    def __init__(self, partner_id, starting_bond, chara_info):
+    def __init__(self, partner_id, starting_bond, chara_info, threader):
         self.partner_id = partner_id
         self.starting_bond = starting_bond
         self.chara_info = chara_info
         self.chara_id = None
+        self.threader = threader
 
         if partner_id < 100:
             support_id = chara_info['support_card_array'][partner_id - 1]['support_card_id']
@@ -104,6 +105,8 @@ class TrainingPartner():
 
         if 6 < self.partner_id <= 1000:
             if self.partner_id in (102,) and not self.chara_info['scenario_id'] in (6,):  # Disable Akikawa usefulness in certain scenarios
+                if not self.threader.settings["akikawa_bond_enabled"]:
+                    return 0
                 usefulness_cutoff = 60
             else:
                 # Skip all non-Umas except Akikawa
@@ -230,7 +233,7 @@ class HelperTable():
 
         # Support Dict
         eval_dict = {
-            eval_data['training_partner_id']: TrainingPartner(eval_data['training_partner_id'], eval_data['evaluation'], data['chara_info'])
+            eval_data['training_partner_id']: TrainingPartner(eval_data['training_partner_id'], eval_data['evaluation'], data['chara_info'], self.carrotjuicer.threader)
             for eval_data in data['chara_info']['evaluation_info_array']
         }
 
