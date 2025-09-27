@@ -682,7 +682,8 @@ class HelperTable():
             "gff_vegetables": gff_vegetables,
             "gff_field_point": gff_field_point,
             "eval_dict": eval_dict,
-            "all_commands": all_commands
+            "all_commands": all_commands,
+            "useful_bond_blacklist": self.carrotjuicer.threader.settings['useful_bond_blacklist']
         }
 
         # Update preset if needed.
