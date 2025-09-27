@@ -178,6 +178,13 @@ class DefaultSettings(se.NewSettings):
             se.SettingType.RADIOBUTTONS,
             tab="Event Helper"
         ),
+        "akikawa_bond_enabled": se.Setting(
+            "Count Akikawa's bond as useful",
+            "Include Akikawa Yayoi's bond gauge in the 'Useful Bond' calculation.",
+            True,
+            se.SettingType.BOOL,
+            tab="Event Helper"
+        ),
         "custom_browser_divider": se.Setting(
             "Custom browser divider",
             None,
