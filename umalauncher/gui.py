@@ -10,6 +10,7 @@ import requests
 import settings_elements as se
 import version
 import constants
+import mdb
 
 ICONS = qtw.QMessageBox.Icon
 
@@ -1152,10 +1153,216 @@ class UmaPreferences(UmaMainWidget):
         self.close()
 
     def manage_blacklist(self):
+        current_blacklist = self.general_var[0].useful_bond_blacklist.value
+        new_blacklist_ref = [current_blacklist]
+        
+        dialog = UmaBlacklistDialog(self, new_blacklist_ref)
+        dialog.exec_()
+        
+        if dialog.saved:
+            self.general_var[0].useful_bond_blacklist.value = new_blacklist_ref[0]
 
-        util.show_info_box("Not Implemented, just a placeholder", "This feature will be implemented in a future step.")
+
+class UmaScenarioPresetDialog(UmaMainDialog):
+    def init_ui(self):
+        self.setObjectName(u"UmaScenarioPresetDialog")
+        self.resize(391, 371)
+        self.setFixedSize(self.size())
+        self.setWindowFlag(qtc.Qt.WindowContextHelpButtonHint, False)
+
+        self.setWindowTitle(u"Set Scenario Presets")
+
+        self.scrollArea = qtw.QScrollArea(self)
+        self.scrollArea.setObjectName(u"scrollArea")
+        self.scrollArea.setGeometry(qtc.QRect(0, 0, 391, 331))
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollAreaWidgetContents = qtw.QWidget()
+        self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
+        self.scrollAreaWidgetContents.setGeometry(qtc.QRect(0, 0, 389, 329))
+
+        self.verticalLayout = qtw.QVBoxLayout(self.scrollAreaWidgetContents)
+        self.verticalLayout.setObjectName(u"verticalLayout")
+
+        current_presets = self._parent.scenario_preset_dict
+        self.comboboxes = []
+
+        # Fill the layout with scenario preset comboboxes
+        for scenario_id, scenario_name in constants.SCENARIO_DICT.items():
+            hzl = qtw.QHBoxLayout()
+            hzl.setObjectName(f"hzl_scenario_{scenario_id}")
+            hzl.setContentsMargins(-1, 5, -1, 5)
+            lbl_scenario = qtw.QLabel(self.scrollAreaWidgetContents)
+            lbl_scenario.setObjectName(f"lbl_scenario_{scenario_id}")
+            lbl_scenario.setText(scenario_name)
+
+            hzl.addWidget(lbl_scenario)
+
+            cmb_preset = qtw.QComboBox(self.scrollAreaWidgetContents)
+            cmb_preset.setObjectName(f"cmb_preset_{scenario_id}")
+            # Save scenario_id in object data
+            cmb_preset.setProperty("scenario_id", str(scenario_id))
+
+            self.comboboxes.append(cmb_preset)
+
+            hzl.addWidget(cmb_preset)
+            
+            current_preset = current_presets.get(str(scenario_id), None)
+            set_index = 0
+
+            for i, preset in enumerate([self._parent.default_preset] + self._parent.preset_list):
+                cmb_preset.addItem(preset.name)
+                if current_preset is not None and current_preset == preset.name:
+                    set_index = i
+            
+            cmb_preset.setCurrentIndex(set_index)
+
+            self.verticalLayout.addLayout(hzl)
+
+        self.verticalSpacer = qtw.QSpacerItem(20, 40, qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Expanding)
+
+        self.verticalLayout.addItem(self.verticalSpacer)
+
+        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+
+        self.btn_cancel = qtw.QPushButton(self)
+        self.btn_cancel.setObjectName(u"btn_cancel")
+        self.btn_cancel.setGeometry(qtc.QRect(300, 340, 81, 23))
+        self.btn_cancel.setText(u"Cancel")
+        self.btn_cancel.setDefault(True)
+        self.btn_cancel.clicked.connect(self.cancel)
+
+        self.btn_ok = qtw.QPushButton(self)
+        self.btn_ok.setObjectName(u"btn_ok")
+        self.btn_ok.setGeometry(qtc.QRect(210, 340, 81, 23))
+        self.btn_ok.setText(u"Apply")
+        self.btn_ok.clicked.connect(self.save)
 
 
+    def save(self):
+        out_dict = {}
+        for cmb in self.comboboxes:
+            scenario_id = cmb.property("scenario_id")
+            out_dict[scenario_id] = cmb.currentText()
+        self._parent.scenario_preset_dict = out_dict
+        self.close()
+    
+    def cancel(self):
+        self.close()
+
+class UmaBlacklistDialog(UmaMainDialog):
+    def init_ui(self, blacklist_ref, *args, **kwargs):
+        self.blacklist_ref = blacklist_ref
+        self.saved = False
+        
+        self.setWindowTitle("Manage Useful Bond Blacklist")
+        self.setFixedSize(500, 400)
+        
+        # Main Layout
+        main_layout = qtw.QVBoxLayout(self)
+        
+        # Search bar
+        self.search_bar = qtw.QLineEdit(self)
+        self.search_bar.setPlaceholderText("Search Characters...")
+        self.search_bar.textChanged.connect(self.filter_available_list)
+        main_layout.addWidget(self.search_bar)
+        
+        # List layout
+        list_layout = qtw.QHBoxLayout()
+        
+        # Available characters side
+        available_layout = qtw.QVBoxLayout()
+        available_label = qtw.QLabel("Available Characters")
+        self.lst_available = qtw.QListWidget()
+        self.lst_available.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
+        available_layout.addWidget(available_label)
+        available_layout.addWidget(self.lst_available)
+        
+        # Buttons in the middle
+        button_layout = qtw.QVBoxLayout()
+        button_layout.addStretch()
+        self.btn_to_blacklist = qtw.QPushButton("->")
+        self.btn_from_blacklist = qtw.QPushButton("<-")
+        self.btn_to_blacklist.clicked.connect(self.move_to_blacklist)
+        self.btn_from_blacklist.clicked.connect(self.move_from_blacklist)
+        button_layout.addWidget(self.btn_to_blacklist)
+        button_layout.addWidget(self.btn_from_blacklist)
+        button_layout.addStretch()
+        
+        # Blacklisted characters side
+        blacklisted_layout = qtw.QVBoxLayout()
+        blacklisted_label = qtw.QLabel("Blacklisted Characters")
+        self.lst_blacklisted = qtw.QListWidget()
+        self.lst_blacklisted.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
+        blacklisted_layout.addWidget(blacklisted_label)
+        blacklisted_layout.addWidget(self.lst_blacklisted)
+        
+        list_layout.addLayout(available_layout)
+        list_layout.addLayout(button_layout)
+        list_layout.addLayout(blacklisted_layout)
+        
+        main_layout.addLayout(list_layout)
+        
+        # Save/Cancel buttons
+        action_button_layout = qtw.QHBoxLayout()
+        action_button_layout.addStretch()
+        self.btn_save = qtw.QPushButton("Save")
+        self.btn_cancel = qtw.QPushButton("Cancel")
+        self.btn_save.clicked.connect(self.save_blacklist)
+        self.btn_cancel.clicked.connect(self.close)
+        action_button_layout.addWidget(self.btn_save)
+        action_button_layout.addWidget(self.btn_cancel)
+        
+        main_layout.addLayout(action_button_layout)
+        
+        self.populate_lists()
+    
+    def populate_lists(self):
+        all_charas = mdb.get_chara_name_dict()
+        current_blacklist = self.blacklist_ref[0]
+
+        # Sort characters by name
+        sorted_charas = sorted(all_charas.items(), key=lambda item: item[1])
+
+        for chara_id, chara_name in sorted_charas:
+            # Skip invalid entries that sometimes appear in the database
+            if chara_id < 1000 or chara_id > 9999:
+                continue
+
+            item = qtw.QListWidgetItem(chara_name)
+            item.setData(qtc.Qt.UserRole, chara_id)
+            if chara_id in current_blacklist:
+                self.lst_blacklisted.addItem(item)
+            else:
+                self.lst_available.addItem(item)
+
+    def move_items(self, source_list, dest_list):
+        for item in source_list.selectedItems():
+            dest_list.addItem(source_list.takeItem(source_list.row(item)))
+        dest_list.sortItems()
+
+    def move_to_blacklist(self):
+        self.move_items(self.lst_available, self.lst_blacklisted)
+
+    def move_from_blacklist(self):
+        self.move_items(self.lst_blacklisted, self.lst_available)
+        self.filter_available_list() # Re-apply filter
+
+    def filter_available_list(self):
+        filter_text = self.search_bar.text().lower()
+        for i in range(self.lst_available.count()):
+            item = self.lst_available.item(i)
+            item.setHidden(filter_text not in item.text().lower())
+    
+    def save_blacklist(self):
+        new_blacklist = []
+        for i in range(self.lst_blacklisted.count()):
+            item = self.lst_blacklisted.item(i)
+            new_blacklist.append(item.data(qtc.Qt.UserRole))
+        
+        self.blacklist_ref[0] = new_blacklist
+        self.saved = True
+        self.close()
+        
 class UmaSimpleDialog(UmaMainDialog):
     def init_ui(self, title: str, message: str, *args, **kwargs):
         self.setWindowTitle(title)
@@ -1510,90 +1717,3 @@ class AboutDialog(UmaMainDialog):
     def on_refresh_id(self):
         self.settings.regenerate_unique_id()
         self.lbl_unique.setText(self.settings['unique_id'])
-
-
-class UmaScenarioPresetDialog(UmaMainDialog):
-    def init_ui(self):
-        self.setObjectName(u"UmaScenarioPresetDialog")
-        self.resize(391, 371)
-        self.setFixedSize(self.size())
-        self.setWindowFlag(qtc.Qt.WindowContextHelpButtonHint, False)
-
-        self.setWindowTitle(u"Set Scenario Presets")
-
-        self.scrollArea = qtw.QScrollArea(self)
-        self.scrollArea.setObjectName(u"scrollArea")
-        self.scrollArea.setGeometry(qtc.QRect(0, 0, 391, 331))
-        self.scrollArea.setWidgetResizable(True)
-        self.scrollAreaWidgetContents = qtw.QWidget()
-        self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(qtc.QRect(0, 0, 389, 329))
-
-        self.verticalLayout = qtw.QVBoxLayout(self.scrollAreaWidgetContents)
-        self.verticalLayout.setObjectName(u"verticalLayout")
-
-        current_presets = self._parent.scenario_preset_dict
-        self.comboboxes = []
-
-        # Fill the layout with scenario preset comboboxes
-        for scenario_id, scenario_name in constants.SCENARIO_DICT.items():
-            hzl = qtw.QHBoxLayout()
-            hzl.setObjectName(f"hzl_scenario_{scenario_id}")
-            hzl.setContentsMargins(-1, 5, -1, 5)
-            lbl_scenario = qtw.QLabel(self.scrollAreaWidgetContents)
-            lbl_scenario.setObjectName(f"lbl_scenario_{scenario_id}")
-            lbl_scenario.setText(scenario_name)
-
-            hzl.addWidget(lbl_scenario)
-
-            cmb_preset = qtw.QComboBox(self.scrollAreaWidgetContents)
-            cmb_preset.setObjectName(f"cmb_preset_{scenario_id}")
-            # Save scenario_id in object data
-            cmb_preset.setProperty("scenario_id", str(scenario_id))
-
-            self.comboboxes.append(cmb_preset)
-
-            hzl.addWidget(cmb_preset)
-            
-            current_preset = current_presets.get(str(scenario_id), None)
-            set_index = 0
-
-            for i, preset in enumerate([self._parent.default_preset] + self._parent.preset_list):
-                cmb_preset.addItem(preset.name)
-                if current_preset is not None and current_preset == preset.name:
-                    set_index = i
-            
-            cmb_preset.setCurrentIndex(set_index)
-
-            self.verticalLayout.addLayout(hzl)
-
-        self.verticalSpacer = qtw.QSpacerItem(20, 40, qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Expanding)
-
-        self.verticalLayout.addItem(self.verticalSpacer)
-
-        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
-
-        self.btn_cancel = qtw.QPushButton(self)
-        self.btn_cancel.setObjectName(u"btn_cancel")
-        self.btn_cancel.setGeometry(qtc.QRect(300, 340, 81, 23))
-        self.btn_cancel.setText(u"Cancel")
-        self.btn_cancel.setDefault(True)
-        self.btn_cancel.clicked.connect(self.cancel)
-
-        self.btn_ok = qtw.QPushButton(self)
-        self.btn_ok.setObjectName(u"btn_ok")
-        self.btn_ok.setGeometry(qtc.QRect(210, 340, 81, 23))
-        self.btn_ok.setText(u"Apply")
-        self.btn_ok.clicked.connect(self.save)
-
-
-    def save(self):
-        out_dict = {}
-        for cmb in self.comboboxes:
-            scenario_id = cmb.property("scenario_id")
-            out_dict[scenario_id] = cmb.currentText()
-        self._parent.scenario_preset_dict = out_dict
-        self.close()
-    
-    def cancel(self):
-        self.close()
