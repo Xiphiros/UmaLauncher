@@ -311,7 +311,7 @@ class UsefulBondSettings(se.NewSettings):
 class UsefulBondRow(hte.Row):
     long_name = "Useful bond gained total"
     short_name = "Useful Bond"
-    description = "Shows the useful bond gain for each facility. Useful includes supports until orange bar, excluding friend/group cards.<br>Also Akikawa until green bar (except Project L'Arc). During L'Arc, Mei counts as useful until green bar."
+    description = "Shows the useful bond gain for each facility. Useful includes supports until orange bar, excluding friend/group cards.<br>Also Akikawa until green bar (except Project L'Arc). During L'Arc, Mei counts as useful until green bar.<br>Akikawa's inclusion can be toggled in the preferences."
 
     def __init__(self):
         super().__init__()
