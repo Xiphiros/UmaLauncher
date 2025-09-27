@@ -333,9 +333,13 @@ class Preset():
 
     def generate_bonds(self, main_info, display_type):
         eval_dict = main_info['eval_dict']
+        blacklist = main_info.get('useful_bond_blacklist', [])
         ids = []
-        for key in eval_dict.keys():
-            if self.settings.hide_support_bonds.value and eval_dict[key].starting_bond == 100:
+        for key, partner in eval_dict.items():
+            if self.settings.hide_support_bonds.value and partner.starting_bond == 100:
+                continue
+
+            if partner.chara_id in blacklist:
                 continue
 
             if key < 100:

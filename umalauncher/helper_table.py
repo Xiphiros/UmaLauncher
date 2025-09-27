@@ -84,6 +84,10 @@ class TrainingPartner():
 
 
     def calc_useful_bond(self, amount, starting_bond):
+        blacklist = self.threader.settings['useful_bond_blacklist']
+        if self.chara_id in blacklist:
+            return 0
+
         usefulness_cutoff = 80
         
         # Ignore group and friend type cards except Satake Mei in Project L'Arc
@@ -105,8 +109,6 @@ class TrainingPartner():
 
         if 6 < self.partner_id <= 1000:
             if self.partner_id in (102,) and not self.chara_info['scenario_id'] in (6,):  # Disable Akikawa usefulness in certain scenarios
-                if not self.threader.settings["akikawa_bond_enabled"]:
-                    return 0
                 usefulness_cutoff = 60
             else:
                 # Skip all non-Umas except Akikawa
@@ -680,8 +682,7 @@ class HelperTable():
             "gff_vegetables": gff_vegetables,
             "gff_field_point": gff_field_point,
             "eval_dict": eval_dict,
-            "all_commands": all_commands,
-            "akikawa_bond_enabled": self.carrotjuicer.threader.settings['akikawa_bond_enabled']
+            "all_commands": all_commands
         }
 
         # Update preset if needed.
