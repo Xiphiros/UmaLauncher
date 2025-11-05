@@ -11,7 +11,10 @@ from inspect import trace
 import msgpack
 from loguru import logger
 from msgpack import Unpacker
-from selenium.common.exceptions import NoSuchWindowException
+from selenium.common.exceptions import NoSuchWindowException, TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 import screenstate_utils
 import util
 import constants
@@ -801,7 +804,7 @@ class CarrotJuicer:
                         continue
                     if message == b'':
                         # Shouldn't happen
-                        logger.error(f"Socket read no data!")
+                        logger.error( f"Socket read no data!")
                         continue
                     if len(message) < 2:
                         logger.error( f"Invalid message (invalid length): {message.hex()}")
@@ -877,8 +880,12 @@ class CarrotJuicer:
                         logger.error( f"Invalid message (invalid type): {message.hex()}")
                         continue
 
-        except NoSuchWindowException:
+        except (NoSuchWindowException, TimeoutException):
+            logger.warning("Browser window closed or timed out.")
             pass
+        except Exception as e:
+            logger.error(f"An unexpected error occurred in run(): {e}")
+            logger.error(traceback.format_exc())
 
         if self.browser:
             logger.debug("Closing browser.")
@@ -998,12 +1005,10 @@ def setup_helper_page(browser: horsium.BrowserWindow):
 
     window.update_overlay = function() {
         window.UL_OVERLAY.ul_data.replaceChildren();
-        window.UL_OVERLAY.ul_data.insertAdjacentHTML("afterbegin", window.UL_DATA.overlay_html)
-        //window.UL_OVERLAY.ul_data.innerHTML = window.UL_DATA.overlay_html;
+        window.UL_OVERLAY.ul_data.insertAdjacentHTML("afterbegin", window.UL_DATA.overlay_html);
 
         if (window.UL_DATA.expanded) {
             window.expand_overlay();
-            //setTimeout(window.expand_overlay, 100);
         }
     };
 
@@ -1044,13 +1049,30 @@ def setup_helper_page(browser: horsium.BrowserWindow):
     gametora_dark_mode(browser)
 
     # Enable all cards
-    browser.execute_script("""document.querySelector("[class^='filters_settings_button_']").click()""")
-    while not browser.execute_script("""return document.getElementById("allAtOnceCheckbox");"""):
-        time.sleep(0.125)
-    all_cards_enabled = browser.execute_script("""return document.getElementById("allAtOnceCheckbox").checked;""")
-    if not all_cards_enabled:
-        browser.execute_script("""document.getElementById("allAtOnceCheckbox").click()""")
-    browser.execute_script("""document.querySelector("[class^='filters_confirm_button_']").click()""")
+    try:
+        settings_button = WebDriverWait(browser.driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "[class^='filters_settings_button_']"))
+        )
+        settings_button.click()
+
+        all_at_once_checkbox = WebDriverWait(browser.driver, 10).until(
+            EC.presence_of_element_located((By.ID, "allAtOnceCheckbox"))
+        )
+        
+        if not all_at_once_checkbox.is_selected():
+            all_at_once_checkbox.click()
+        
+        confirm_button = WebDriverWait(browser.driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "[class^='filters_confirm_button_']"))
+        )
+        confirm_button.click()
+
+    except TimeoutException as e:
+        logger.warning(f"Timeout while setting up helper page: {e}")
+    except Exception as e:
+        logger.error(f"Error setting up helper page: {e}")
+        logger.error(traceback.format_exc())
+
 
     gametora_remove_cookies_banner(browser)
     gametora_close_ad_banner( browser )
