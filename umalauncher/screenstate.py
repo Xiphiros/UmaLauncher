@@ -1,5 +1,6 @@
 import time
 import asyncio
+import traceback
 from enum import Enum
 from io import BytesIO
 import os
@@ -157,7 +158,7 @@ class ScreenStateHandler():
             self.dmm_handle = dmm_handle
             self.dmm_seen = True
 
-        self.check_game('IS_UL_GLOBAL' in os.environ)
+        self.check_game('IS_UL_GLOBAL' in os.environ, 'IS_JP_STEAM' in os.environ)
         return
 
 
@@ -197,8 +198,9 @@ class ScreenStateHandler():
             if util.is_debug:
                 image.save(util.get_relative("screenshot.png"), "PNG")
             return image
-        except Exception:
+        except Exception as e:
             logger.error("Couldn't get screenshot.")
+            logger.error(traceback.format_exc())
             return None
 
     def screenshot_to_clipboard(self):
@@ -216,9 +218,11 @@ class ScreenStateHandler():
         win32clipboard.SetClipboardData(win32clipboard.CF_DIB, image_data)
         win32clipboard.CloseClipboard()
 
-    def check_game(self, is_global):
+    def check_game(self, is_global, is_jp_steam):
         if is_global:
             game_handle = util.get_game_handle_global()
+        elif is_jp_steam:
+            game_handle = util.get_game_handle_jp_steam()
         else:
             game_handle = util.get_game_handle()
         if game_handle:
@@ -245,6 +249,7 @@ class ScreenStateHandler():
             umapatcher.unpatch(self.threader)
 
         # Enable VPN if needed
+        # TODO: vpn to USA if on global and flag is set
         if 'IS_UL_GLOBAL' not in os.environ and self.threader.settings["vpn_enabled"] and not self.threader.settings["vpn_dmm_only"]:
             self.vpn = vpn.create_client(self.threader, cygames=True)
             self.vpn.connect()
@@ -263,18 +268,19 @@ class ScreenStateHandler():
 
             # Game was never seen before
             if not self.game_seen:
-                self.check_game('IS_UL_GLOBAL' in os.environ)
+                self.check_game('IS_UL_GLOBAL' in os.environ, 'IS_JP_STEAM' in os.environ)
 
                 if onetime:
                     onetime = False
                     # If DMM is not seen AND Game is not seen: Start DMM
                     if not self.game_seen:
                         # Enable DMM-only VPN
+                        #TODO: vpn to USA if on global and flag is set
                         if 'IS_UL_GLOBAL'not  in os.environ and self.threader.settings["vpn_enabled"] and self.threader.settings["vpn_dmm_only"]:
                             self.vpn = vpn.create_client(self.threader)
                             self.vpn.connect()
 
-                        if 'IS_UL_GLOBAL' in os.environ:
+                        if 'IS_UL_GLOBAL' in os.environ or 'IS_JP_STEAM' in os.environ:
                             steam.start()
                         else:
                             dmm.start()
@@ -296,7 +302,7 @@ class ScreenStateHandler():
                 continue
 
             # Close DMM
-            if 'IS_UL_GLOBAL' not in os.environ and not self.dmm_closed and self.threader.settings["autoclose_dmm"]:
+            if ('IS_UL_GLOBAL' not in os.environ and 'IS_JP_STEAM' not in os.environ) and not self.dmm_closed and self.threader.settings["autoclose_dmm"]:
                 # Attempt to close DMM, even if it doesn't exist
                 new_dmm_handle = dmm.get_dmm_handle()
                 if new_dmm_handle:
