@@ -90,30 +90,22 @@ class TrainingPartner():
 
         usefulness_cutoff = 80
         
-        # Ignore group and friend type cards except Satake Mei in Project L'Arc
         if self.partner_id <= 6:
             support_card_id = self.chara_info['support_card_array'][self.partner_id - 1]['support_card_id']
-
-            if support_card_id in (10094, 30160) and self.chara_info['scenario_id'] in (6,):  # Only count Mei in Project L'Arc
+            support_card_data = mdb.get_support_card_dict()[support_card_id]
+            support_card_type = constants.SUPPORT_CARD_TYPE_DICT[(support_card_data[1], support_card_data[2])]
+            
+            if support_card_type in ("group", "friend"):
                 usefulness_cutoff = 60
-            elif support_card_id in (10104, 30188) and self.chara_info['scenario_id'] in (7,):  # Only count Ryoka in UAF
-                usefulness_cutoff = 60
-            else:
-                support_card_data = mdb.get_support_card_dict()[support_card_id]
-                support_card_type = constants.SUPPORT_CARD_TYPE_DICT[(support_card_data[1], support_card_data[2])]
-                if support_card_type in ("group", "friend"):
-                    return 0
 
-        cur_bond = amount + starting_bond
-        effective_bond = 0
-
-        if 6 < self.partner_id <= 1000:
-            if self.partner_id in (102,) and not self.chara_info['scenario_id'] in (6,):  # Disable Akikawa usefulness in certain scenarios
+        elif 6 < self.partner_id <= 1000:
+            if self.partner_id in (102,) and not self.chara_info['scenario_id'] in (6,):  # Akikawa
                 usefulness_cutoff = 60
             else:
-                # Skip all non-Umas except Akikawa
+                # Skip all other non-Uma scenario characters
                 return 0
 
+        cur_bond = amount + starting_bond
         new_bond = min(cur_bond, usefulness_cutoff)
         effective_bond = new_bond - starting_bond
         return max(effective_bond, 0)
