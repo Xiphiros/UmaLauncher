@@ -295,7 +295,7 @@ class CarrotJuicer:
             if self.browser and self.browser.alive():
                 self.browser.execute_script(
                     """
-                    document.querySelectorAll("[class^='compatibility_viewer_item_'][aria-expanded=true]").forEach(e => e.click());
+                    document.querySelectorAll("#viewer-box-main button[aria-expanded='true'], #viewer-box-quick button[aria-expanded='true']").forEach(e => e.click());
                     """
                 )
                 gametora_close_ad_banner(self.browser)
@@ -450,8 +450,14 @@ class CarrotJuicer:
                     if event_data['event_contents_info']['support_card_id'] and event_data['event_contents_info']['support_card_id'] not in supports:
                         # Random support card event
                         logger.debug("Random support card detected")
+                        support_card_id = event_data['event_contents_info']['support_card_id']
 
                         self.browser.execute_script("""document.getElementById("boxSupportExtra").click();""")
+                        
+                        # Wait for popup to appear
+                        WebDriverWait(self.browser.driver, 5).until(
+                            EC.presence_of_element_located((By.ID, str(support_card_id)))
+                        )
                         self.browser.execute_script(
                             """
                             var cont = document.getElementById("30021").parentElement.parentElement;
@@ -464,7 +470,11 @@ class CarrotJuicer:
                             }
                             cont.querySelector('img[src="/images/ui/close.png"]').click();
                             """,
-                            event_data['event_contents_info']['support_card_id']
+                            support_card_id
+                        )
+                        # Wait for quick lookup box to update
+                        WebDriverWait(self.browser.driver, 5).until(
+                            EC.presence_of_element_located((By.XPATH, f"//div[@id='viewer-box-quick']//img[contains(@src, '{support_card_id}')]"))
                         )
                     else:
                         logger.debug("Trained character or support card detected")
@@ -682,10 +692,19 @@ class CarrotJuicer:
         for event_title in event_titles:
             possible_elements = self.browser.execute_script(
                 """
-                let a = document.querySelectorAll("[class^='compatibility_viewer_item_']");
+                let main_container = document.getElementById("viewer-box-main");
+                let quick_container = document.getElementById("viewer-box-quick");
+                let buttons = [];
+                if (main_container) {
+                    buttons = buttons.concat(Array.from(main_container.querySelectorAll("button")));
+                }
+                if (quick_container) {
+                    buttons = buttons.concat(Array.from(quick_container.querySelectorAll("button")));
+                }
+
                 let ele = [];
-                for (let i = 0; i < a.length; i++) {
-                    let item = a[i];
+                for (let i = 0; i < buttons.length; i++) {
+                    let item = buttons[i];
                     if (item.textContent.includes(arguments[0])) {
                         let diff = item.textContent.length - arguments[0].length;
                         ele.push([diff, item, item.textContent]);
