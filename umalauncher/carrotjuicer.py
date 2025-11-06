@@ -1067,10 +1067,10 @@ def setup_helper_page(browser: horsium.BrowserWindow):
 
     gametora_dark_mode(browser)
 
-    # Enable all cards
+    # Enable "Show all cards at once"
     try:
         settings_button = WebDriverWait(browser.driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "[class^='filters_settings_button_']"))
+            EC.element_to_be_clickable((By.ID, "teh-settings-open"))
         )
         settings_button.click()
 
@@ -1082,14 +1082,14 @@ def setup_helper_page(browser: horsium.BrowserWindow):
             all_at_once_checkbox.click()
         
         confirm_button = WebDriverWait(browser.driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "[class^='filters_confirm_button_']"))
+            EC.element_to_be_clickable((By.ID, "teh-settings-confirm"))
         )
         confirm_button.click()
 
     except TimeoutException as e:
-        logger.warning(f"Timeout while setting up helper page: {e}")
+        logger.warning(f"Timeout while setting up helper page options: {e}")
     except Exception as e:
-        logger.error(f"Error setting up helper page: {e}")
+        logger.error(f"Error setting up helper page options: {e}")
         logger.error(traceback.format_exc())
 
 
