@@ -1076,7 +1076,8 @@ class UmaPreferences(UmaMainWidget):
         # unique_tabs.append(unique_tabs.pop(unique_tabs.index("English Patch")))
 
         self.command_dict = {
-            "open_training_logs": lambda: util.open_folder(util.TRAINING_LOGS_FOLDER)
+            "open_training_logs": lambda: util.open_folder(util.TRAINING_LOGS_FOLDER),
+            "manage_blacklist": self.manage_blacklist
         }
 
         self.settings_widgets = []
@@ -1151,6 +1152,16 @@ class UmaPreferences(UmaMainWidget):
 
         self.has_saved = True
         self.close()
+
+    def manage_blacklist(self):
+        current_blacklist = self.general_var[0].useful_bond_blacklist.value
+        new_blacklist_ref = [current_blacklist]
+        
+        dialog = UmaBlacklistDialog(self, new_blacklist_ref)
+        dialog.exec_()
+        
+        if dialog.saved:
+            self.general_var[0].useful_bond_blacklist.value = new_blacklist_ref[0]
 
 
 class UmaSimpleDialog(UmaMainDialog):
