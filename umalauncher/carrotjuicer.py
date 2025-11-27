@@ -9,6 +9,7 @@ from datetime import datetime
 from inspect import trace
 
 import msgpack
+import select
 from loguru import logger
 from msgpack import Unpacker
 from selenium.common.exceptions import NoSuchWindowException
@@ -161,12 +162,12 @@ class CarrotJuicer:
             start_pos = self.get_browser_reset_position()
         
         self.browser = horsium.BrowserWindow(self.helper_url, self.threader, rect=start_pos, run_at_launch=setup_helper_page)
-        self.browser_topmost = topmost
-        if topmost:
-            self.browser.set_topmost(True)
+        self.set_browser_topmost(topmost)
 
 
     def get_browser_reset_position(self):
+        if self.threader.windowmover.window is None:
+            return None
         game_rect, _ = self.threader.windowmover.window.get_rect()
         workspace_rect = self.threader.windowmover.window.get_workspace_rect()
         left_side = abs(workspace_rect[0] - game_rect[0])
@@ -204,7 +205,8 @@ class CarrotJuicer:
 
     def save_last_browser_rect(self):
         self.save_rect(self.last_browser_rect, "browser_position")
-        self.threader.settings["browser_topmost"] = self.browser_topmost
+        if self.threader.settings["browser_topmost"] != self.browser_topmost:
+            self.threader.settings["browser_topmost"] = self.browser_topmost
     
     def save_skill_window_rect(self):
         if self.skill_browser:
@@ -808,8 +810,14 @@ class CarrotJuicer:
                 else:
                     logger.debug("Waiting for message...")
                     try:
-                        message = self.sock.recv(self.MAX_BUFFER_SIZE)
-                        logger.debug(f"Received {len(message)} bytes of data")
+                        ready = select.select([self.sock], [], [], 0.5)
+                        if ready[0]:
+                            message = self.sock.recv(self.MAX_BUFFER_SIZE)
+                            logger.debug(f"Received {len(message)} bytes of data")
+                        else:
+                            # No data available, keep waiting
+                            # TODO: is there a better way to do this than busy waiting?
+                            continue
                     except Exception as e:
                         #TODO: kill the socket in a "good" way that doesn't throw an exception here
                         logger.error(f"Socket interrupted: {e}\n{traceback.format_exc()}")
@@ -1184,21 +1192,22 @@ def gametora_close_ad_banner(browser: horsium.BrowserWindow):
             }
             """)
 
-    # Close the top support cards thing, super jank
-    browser.execute_script("""
-                    let a = document.querySelector("[id^='styles_page-main_']");
-                    if( a != null ){
-                        let b = a.children[1]; //First element is top ad
-                        if( b != null )
-                        {
-                            let c = b.children[b.childElementCount - 1]; //Last element is the support cards thing
-                            if( c != null )
+    if 'training-event-helper' in browser.url:
+        # Close the top support cards thing, super jank
+        browser.execute_script("""
+                        let a = document.querySelector("[id^='styles_page-main_']");
+                        if( a != null ){
+                            let b = a.children[1]; //First element is top ad
+                            if( b != null )
                             {
-                                c.style.display = "none";
+                                let c = b.children[b.childElementCount - 1]; //Last element is the support cards thing
+                                if( c != null )
+                                {
+                                    c.style.display = "none";
+                                }
                             }
                         }
-                    }
-                    """)
+                        """)
 
 
 
